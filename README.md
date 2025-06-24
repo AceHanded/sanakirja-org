@@ -1,6 +1,6 @@
 # sanakirja-org
 
-[![License](https://img.shields.io/github/license/AceHanded/sanakirja-org?style=for-the-badge)](https://github.com/AceHanded/sanakirja-org/blob/master/LICENSE)
+[![License](https://img.shields.io/github/license/AceHanded/sanakirja-org?style=for-the-badge)](https://github.com/AceHanded/sanakirja-org/blob/main/LICENSE)[![CC BY-SA 3.0](https://img.shields.io/badge/CC--BY--SA--3.0-orange?style=for-the-badge)](https://github.com/AceHanded/sanakirja-org/blob/main/LICENSE.CC-BY-SA)
 [![GitHubStars](https://img.shields.io/github/stars/AceHanded/sanakirja-org?style=for-the-badge&logo=github&labelColor=black)](https://github.com/AceHanded/sanakirja-org)
 [![PyPI](https://img.shields.io/pypi/dm/sanakirja-org?style=for-the-badge&logo=pypi&logoColor=white&labelColor=blue)](https://pypi.org/project/sanakirja-org/)
 [![BuyMeACoffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/acehand)
@@ -71,3 +71,12 @@ sanakirja --show="all,-translations" --pretty 2 --output "./result.json" --from 
 
 The above example returns a result dictionary for the query "kivi" from Finnish to English, without the "translations" field and with an indent level of 2, and saves the result into a file called "result.json" at the current directory. \
 The argument `-h, --help` provides more information about each argument.
+
+## Attribution and licensing
+
+This package is licensed under the [MIT License](LICENSE).
+
+It makes use of content retrieved from [sanakirja.org](https://sanakirja.org), a web service provided by Sanakirja.org Solutions Oy. The content is licensed under the Creative Commons Attribution-ShareAlike 3.0 Unported License ([CC BY-SA 3.0](LICENSE.CC-BY-SA)). \
+This package is **not** affiliated with or endorsed by sanakirja.org.
+
+If you redistribute content fetched using this package, you are responsible for complying with the terms of the CC BY-SA license, including proper attribution.

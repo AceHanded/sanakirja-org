@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sanakirja-org"
-version = "1.0.0"
+version = "1.0.0.post1"
 authors = [{ name = "AceHanded" }]
 description = "An unofficial Python API and CLI tool for sanakirja.org."
 readme = "README.md"
