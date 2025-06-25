@@ -1,0 +1,51 @@
+name: Feature request
+description: File a request regarding a desired feature.
+title: "[Feature] "
+labels: ["feature"]
+body:
+    - type: checkboxes
+      id: solves-problem
+      attributes:
+          label: Does this feature solve a problem?
+          options:
+              - label: Yes, this feature solves a problem.
+    - type: dropdown
+      id: priority
+      attributes:
+          label: Perceived priority
+          description: Please choose the level of importance you consider this feature to have.
+          options:
+              - Low
+              - Medium
+              - High
+          default: 0
+      validations:
+          required: true
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: Please provide a clear and concise description of the requested feature.
+          placeholder: Describe the feature...
+      validations:
+          required: true
+    - type: textarea
+      id: implementation
+      attributes:
+          label: Implementation ideas
+          description: Please describe how you envision the requested feature to be implemented.
+          placeholder: Ways to implement...
+      validations:
+          required: true
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives
+          description: Please describe what alternatives or workarounds you have considered, if any.
+          placeholder: Alternative approaches...
+    - type: textarea
+      id: additional-info
+      attributes:
+          label: Additional information
+          description: Would you like to include any other information that might assist in implementing the feature?
+          placeholder: Any other remarks...

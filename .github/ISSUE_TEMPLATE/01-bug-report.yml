@@ -1,0 +1,100 @@
+name: Bug report
+description: File a report regarding an encountered bug.
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+    - type: dropdown
+      id: priority
+      attributes:
+          label: Perceived priority
+          description: Please choose the level of importance you consider this bug to have.
+          options:
+              - Low
+              - Medium
+              - High
+          default: 0
+      validations:
+          required: true
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: Please provide a clear and concise description of the encountered bug.
+          placeholder: Describe the bug...
+      validations:
+          required: true
+    - type: textarea
+      id: code
+      attributes:
+          label: Code
+          description: Please provide relevant code, which induces the bug.
+          placeholder: |
+              ```python
+              # Include code here...
+              ```
+          value: |
+              ```python
+              # Include code here...
+              ```
+      validations:
+          required: true
+    - type: textarea
+      id: expected-behaviour
+      attributes:
+          label: Expected behaviour
+          description: Please describe what should have happened instead of the observed behaviour.
+          placeholder: What was expected...
+      validations:
+          required: true
+    - type: textarea
+      id: logs
+      attributes:
+          label: Logs
+          description: Please provide relevant logs, which occur during the bug.
+          render: shell
+      validations:
+          required: true
+    - type: dropdown
+      id: package-version
+      attributes:
+          label: Package version
+          description: Please select the relevant package version.
+          options:
+              - "1.0.0"
+              - "1.0.0.post1"
+          default: 0
+      validations:
+          required: true
+    - type: dropdown
+      id: python-version
+      attributes:
+          label: Python version
+          description: Please select the relevant Python version.
+          options:
+              - "3.8"
+              - "3.9"
+              - "3.10"
+              - "3.11"
+              - "3.12"
+              - "3.13"
+          default: 0
+      validations:
+          required: true
+    - type: dropdown
+      id: operating-system
+      attributes:
+          label: Operating system
+          description: Please select the relevant operating system.
+          options:
+              - Windows
+              - MacOS
+              - Linux
+          default: 0
+      validations:
+          required: true
+    - type: textarea
+      id: additional-info
+      attributes:
+          label: Additional information
+          description: Would you like to include any other information that might assist in fixing the bug?
+          placeholder: Any other remarks...

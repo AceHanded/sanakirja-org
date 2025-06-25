@@ -1,0 +1,31 @@
+name: Other issue
+description: File a form regarding some other issue.
+title: "[Other] "
+labels: ["other"]
+body:
+    - type: dropdown
+      id: priority
+      attributes:
+          label: Perceived priority
+          description: Please choose the level of importance you consider this issue to have.
+          options:
+              - Low
+              - Medium
+              - High
+          default: 0
+      validations:
+          required: true
+    - type: textarea
+      id: description
+      attributes:
+          label: Description
+          description: Please provide a clear and concise description of the issue.
+          placeholder: Describe the issue...
+      validations:
+          required: true
+    - type: textarea
+      id: additional-info
+      attributes:
+          label: Additional information
+          description: Would you like to include any other information that might assist in the handling of this issue?
+          placeholder: Any other remarks...
