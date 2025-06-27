@@ -7,13 +7,14 @@ from urllib.parse import quote
 from typing import Dict, List, Optional, Tuple, TypedDict, Union
 
 # Custom type aliases for improved readability
-StrDictList = List[Dict[str, Optional[str]]]
-TranslationEntry = Dict[str, Optional[Union[str, List[str], StrDictList]]]
+StrDictList = List[Dict[str, str]]
+OptStrDictList = List[Dict[str, Optional[str]]]
+TranslationEntry = Dict[str, Optional[Union[str, List[str], OptStrDictList]]]
 
 ExampleResult = Dict[str, List[str]]
-DefinitionResult = List[Optional[Union[str, List[str]]]]
-PronunciationResult = Dict[str, StrDictList]
+PronunciationResult = Dict[str, OptStrDictList]
 TranslationResult = Dict[str, List[TranslationEntry]]
+DefinitionResult = List[Optional[Union[str, List[str], Dict[str, str]]]]
 
 class SanakirjaResult(TypedDict):
     """Result dictionary with type annotated individual fields."""
@@ -22,18 +23,21 @@ class SanakirjaResult(TypedDict):
     target_language: Optional[str]
     word: str
     transliteration: Optional[str]
-    additional_source_languages: List[str]
-    relations: List[str]
-    similar_words: List[str]
-    alternative_spellings: StrDictList
-    multiple_spellings: List[str]
-    synonyms: StrDictList
+    gender: Optional[str]
+    additional_source_languages: Dict[str, str]
+    relations: StrDictList
+    did_you_mean: Dict[str, str]
+    suggestions: OptStrDictList
+    found_examples: OptStrDictList
+    alternative_spellings: OptStrDictList
+    multiple_spellings: StrDictList
+    synonyms: OptStrDictList
     pronunciations: PronunciationResult
-    abbreviations: StrDictList
-    inflections: Dict[str, str]
+    abbreviations: OptStrDictList
+    inflections: StrDictList
     definitions: DefinitionResult
     examples: ExampleResult
-    categories: List[str]
+    categories: StrDictList
     translations: TranslationResult
 
 class LangCodes(IntEnum):
@@ -105,7 +109,7 @@ class Sanakirja:
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The resolved SK object in `dict` format.
+        :return: The resolved SK object in `dict` format, with keys in `str` format and values in `int`, `str` or `bool` format.
         :rtype: dict[str, int | str | bool]
         """
         body = tag_parser.find(html, "body")
@@ -115,29 +119,35 @@ class Sanakirja:
         return sk_var_dict
     
     @staticmethod
-    def _get_multiple_spellings(html: str) -> List[str]:
+    def _get_multiple_spellings(html: str) -> StrDictList:
         """
         Extract the multiple spellings from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The multiple spellings as a list of strings.
-        :rtype: list[str]
+        :return: The multiple spellings as :type:`StrDictList` type.
+        :rtype: StrDictList
         """
         multiple_spellings_ul = tag_parser.find(html, "ul", {"class": "multiple_spellings"})
-        multiple_spellings = tag_parser.find_all_text(multiple_spellings_ul, "a")
+        multiple_spellings = []
+
+        for li in tag_parser.find_all(multiple_spellings_ul, "li"):
+            word = tag_parser.find_text(li, "a")
+            url = f"https://sanakirja.org{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
+
+            multiple_spellings.append({"word": word, "word_url": url})
 
         return multiple_spellings
         
     @staticmethod
-    def _get_alt_synonyms_and_pronunciations(html: str) -> Tuple[StrDictList, StrDictList, PronunciationResult]:
+    def _get_alt_synonyms_and_pronunciations(html: str) -> Tuple[OptStrDictList, OptStrDictList, PronunciationResult]:
         """
         Extract the alternative spellings, synonyms and pronunciations from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The alternative spellings and synonyms as :type:`StrDictList` type and pronunciations as :type:`PronunciationResult` type.
-        :rtype: tuple[StrDictList, StrDictList, PronunciationResult]
+        :return: The alternative spellings and synonyms as :type:`OptStrDictList` type and pronunciations as :type:`PronunciationResult` type.
+        :rtype: tuple[OptStrDictList, OptStrDictList, PronunciationResult]
         """
         lists_div = tag_parser.find(html, "div", {"class": "lists"})
         alternative_spellings_div = tag_parser.find(lists_div, "div", {"class": "alternative_spellings"})
@@ -145,18 +155,20 @@ class Sanakirja:
 
         for li in tag_parser.find_all(alternative_spellings_div, "li"):
             word = tag_parser.find_text(li, "a")
+            url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
             context = tag_parser.find_text(li, "span").strip("() ") or None
 
-            alternative_spellings.append({"word": word, "context": context})
+            alternative_spellings.append({"word": word, "context": context, "word_url": url})
 
         synonyms_div = tag_parser.find(lists_div, "div", {"class": "synonyms"})
         synonyms = []
 
         for li in tag_parser.find_all(synonyms_div, "li"):
             word = tag_parser.find_text(li, "a")
+            url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
             context = tag_parser.find_text(li, "span").strip("() ") or None
 
-            synonyms.append({"word": word, "context": context})
+            synonyms.append({"word": word, "context": context, "word_url": url})
 
         pronunciations_div = tag_parser.find(lists_div, "div", {"class": "pronunciation"})
         pronunciations = {}
@@ -179,65 +191,81 @@ class Sanakirja:
         return alternative_spellings, synonyms, pronunciations
     
     @staticmethod
-    def _get_source_languages(html: str) -> List[str]:
+    def _get_source_languages(html: str) -> Dict[str, str]:
         """
         Extract the additional source languages from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The additional source languages as a list of strings.
-        :rtype: list[str]
+        :return: The additional source languages in `dict` format, with keys and values in `str` format.
+        :rtype: dict[str, str]
         """
         source_languages_div = tag_parser.find(html, "div", {"id": "source_languages"})
-        source_languages = []
+        source_languages = {}
 
         # Omit the current language
         for li in tag_parser.find_all(source_languages_div, "li")[1:]:
-            lang = int(tag_parser.find_attrs(li, "a").get("href", "").split("=")[-1] or 0)
-            source_languages.append(LangCodes(lang).name)
+            href = tag_parser.find_attrs(li, "a").get("href", "")
+            lang_match = re.search(r"l=(\d{1,2})", href)
+            lang = int(lang_match.group(1) if lang_match else 0)
+            url = f"https://www.sanakirja.org{href}" if href else None
+
+            source_languages[LangCodes(lang).name] = url
 
         return source_languages
     
     @staticmethod
-    def _get_abbreviations(html: str) -> StrDictList:
+    def _get_abbreviations(html: str) -> OptStrDictList:
         """
         Extract the abbreviations from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The abbreviations as :type:`StrDictList` type.
-        :rtype: StrDictList
+        :return: The abbreviations as :type:`OptStrDictList` type.
+        :rtype: OptStrDictList
         """
         abbreviations_div = tag_parser.find(html, "div", {"class": "abbreviations"})
         abbreviations = []
 
         for li in tag_parser.find_all(abbreviations_div, "li"):
             word = tag_parser.find_text(li, "a")
+            url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
             context = tag_parser.find_text(li, "li").rstrip(word).strip("() ") or None
 
-            abbreviations.append({"word": word, "context": context})
+            abbreviations.append({"word": word, "context": context, "word_url": url})
 
         return abbreviations
     
     @staticmethod
-    def _get_inflections(html: str) -> Dict[str, str]:
+    def _get_inflections(html: str) -> StrDictList:
         """
         Extract the inflections from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The inflections in `dict` format, with keys and values in `str` format.
-        :rtype: dict[str, str]
+        :return: The inflections as :type:`StrDictList` type.
+        :rtype: StrDictList
         """
         inflections_table = tag_parser.find(html, "table", {"class": "inflections"})
-        sk_rows_tr = tag_parser.find_all(inflections_table, "tr", {"class": r"sk-row[12]"})
-        inflections_td = []
+        inflections, inflections_pairs = [], []
 
-        for row in sk_rows_tr:
-            inflections_td.extend([text for text in tag_parser.find_all_text(row, "td") if text])
+        for row in tag_parser.find_all(inflections_table, "tr", {"class": r"sk-row[12]"}):
+            text = [text for text in tag_parser.find_all_text(row, "td") if text]
+            hrefs = [attrs.get("href", "") for attrs in tag_parser.find_all_attrs(row, "a")]
+            urls = [f"https://www.sanakirja.org/{href}" if href else None for href in hrefs]
 
-        # Create a dictionary from a list alternating keys and values
-        inflections = dict(zip([k.lower() for k in inflections_td[::2]], inflections_td[1::2]))
+            for i in range(len(text)):
+                inflections_pairs.append(text[i] if not i % 2 else (text[i], urls[i // 2]))
+
+        for i in range(0, len(inflections_pairs), 2):
+            inflection_type = inflections_pairs[i]
+            word, url = inflections_pairs[i + 1]
+            
+            inflections.append({
+                "type": inflection_type,
+                "word": word,
+                "word_url": url
+            })
 
         return inflections
     
@@ -267,18 +295,21 @@ class Sanakirja:
 
                 for full_word in rows_td[1].split(","):
                     word = tag_parser.find_text(full_word, "a")
+                    url = f"https://www.sanakirja.org{href}" if (href := tag_parser.find_attrs(full_word, "a").get("href", "")) else None
                     transliteration_match = re.search(r"\(([^)]+)\)", full_word)
+                    transliteration = transliteration_match.group(1) if transliteration_match else None
 
-                    words_and_transliterations.append((word, transliteration_match.group(1) if transliteration_match else None))
+                    words_and_transliterations.append((word, transliteration, url))
 
                 lang_dict[LangCodes(lang).name] = [{
                     "word": word,
                     "transliteration": transliteration,
                     "gender": None,
                     "group": None,
+                    "word_url": url,
                     "context": [],
                     "pronunciations": {}
-                } for word, transliteration in words_and_transliterations]
+                } for word, transliteration, url in words_and_transliterations]
 
             return lang_dict
 
@@ -293,6 +324,7 @@ class Sanakirja:
 
             rows_td = tag_parser.find_all(row, "td")
             word = tag_parser.find_text(rows_td[1], "a")
+            url = f"https://www.sanakirja.org{href}" if (href := tag_parser.find_attrs(rows_td[1], "a").get("href", "")) else None
             
             gender_span = tag_parser.find_text(rows_td[1], "span")
             gender = gender_span.strip("{}") if gender_span else None
@@ -311,19 +343,20 @@ class Sanakirja:
             pronunciations = {}
 
             for abbr, li in zip(abbrs, pronunciation_li):
-                url = tag_parser.find_attrs(li, "a", {"class": "audio"}).get("href", "").lstrip("//")
-                pronunciations.setdefault(abbr, []).append(url)
+                audio_url = tag_parser.find_attrs(li, "a", {"class": "audio"}).get("href", "").lstrip("//")
+                pronunciations.setdefault(abbr, []).append(audio_url)
 
             translations.append({
                 "word": word,
                 "transliteration": transliteration,
                 "gender": gender,
                 "group": current_group,
+                "word_url": url,
                 "context": context,
                 "pronunciations": pronunciations
             })
 
-        return {LangCodes(l2).name: translations}
+        return {LangCodes(l2).name: translations} if translations else {}
     
     @staticmethod
     def _get_transliteration(html: str) -> Optional[str]:
@@ -336,39 +369,94 @@ class Sanakirja:
         :rtype: str | None
         """
         transliteration_text = tag_parser.find_text(html, "p", {"class": "transliteration"})
-        transliteration = transliteration_text.split("Translitterointi: ")[-1][:-1] if transliteration_text else None
+        transliteration = transliteration_text.lstrip("Translitterointi: ")[:-1] if transliteration_text else None
 
         return transliteration
     
     @staticmethod
-    def _get_relations(html: str) -> List[str]:
+    def _get_gender(html: str) -> Optional[str]:
+        """
+        Extract the gender from the HTML of the webpage.
+
+        :param html: The HTML of the webpage.
+        :type html: str
+        :return: The gender in `str` format, or None if not applicable.
+        :rtype: str | None
+        """
+        gender_p = tag_parser.find(html, "p", {"class": "gender"})
+        gender = tag_parser.find_text(gender_p, "span") or None
+
+        return gender
+    
+    @staticmethod
+    def _get_relations(html: str) -> StrDictList:
         """
         Extract the relations from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The relations as a list of strings.
-        :rtype: list[str]
+        :return: The relations as :type:`StrDictList` type.
+        :rtype: StrDictList
         """
         relations_div = tag_parser.find(html, "ul", {"class": r"relations.*"})
-        relations = tag_parser.find_all_text(relations_div, "a")
+        relations, unique_words = [], set()
 
-        return list(dict.fromkeys(relations))
+        for li in tag_parser.find_all(relations_div, "li"):
+            word = tag_parser.find_text(li, "a")
+            url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
+        
+            if word not in unique_words:
+                relations.append({"word": word, "word_url": url})
+                unique_words.add(word)
+
+        return relations
     
     @staticmethod
-    def _get_similar_words(html: str) -> List[str]:
+    def _get_dym_suggestions_and_found_examples(html: str) -> Tuple[Dict[str, str], OptStrDictList, OptStrDictList]:
         """
         Extract the similar words from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The similar words as a list of strings.
-        :rtype: list[str]
+        :return: The similar words as :type:`OptStrDictList` type.
+        :rtype: tuple[dict[str, str], OptStrDictList, OptStrDictList]
         """
         similar_words_div = tag_parser.find(html, "div", {"class": "similar_words"})
-        similar_words = tag_parser.find_all_text(similar_words_div, "a")
+        suggestions_ul = tag_parser.find(similar_words_div, "ul", {"id": "suggestions"})
+        suggestions_and_font_sizes = []
 
-        return similar_words
+        for li in tag_parser.find_all(suggestions_ul, "li"):
+            word = tag_parser.find_text(li, "a")
+            corrected_word = tag_parser.find_text(li, "li").lstrip(word).replace("->", "").strip() or None
+
+            attrs = tag_parser.find_attrs(li, "a")
+            url = f"https://www.sanakirja.org/{href}" if (href := attrs.get("href", "")) else None
+            font_size = int(style.split()[-1].rstrip("%;") if (style := attrs.get("style", "")) else 100)
+
+            suggestions_and_font_sizes.append(({"word": word, "corrected_word": corrected_word, "word_url": url}, font_size))
+
+        # Place the words in descending order by their font sizes
+        suggestions = [words for words, _ in sorted(suggestions_and_font_sizes, key=lambda x: x[1], reverse=True)]
+
+        did_you_mean = {}
+
+        if (did_you_mean_h2 := tag_parser.find(similar_words_div, "h2", {"class": "did_you_mean"})):
+            did_you_mean_word = tag_parser.find_text(did_you_mean_h2, "a")
+            did_you_mean_url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(did_you_mean_h2, "a").get("href", "")) else None
+
+            did_you_mean = {"word": did_you_mean_word, "word_url": did_you_mean_url}
+
+        examples_ul = tag_parser.find(similar_words_div, "ul", {"class": "examples"})
+        found_examples = []
+
+        for li in tag_parser.find_all(examples_ul, "li"):
+            word = tag_parser.find_text(li, "a")
+            example = tag_parser.find_text(li, "li").lstrip(f"{word} - ").strip() or None
+            url = f"https://www.sanakirja.org/{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
+
+            found_examples.append({"word": word, "text": example, "word_url": url})
+
+        return did_you_mean, suggestions, found_examples
     
     @staticmethod
     def _get_definitions(html: str) -> DefinitionResult:
@@ -396,7 +484,13 @@ class Sanakirja:
             # Account for the stripped parentheses and whitespace
             text = text_full[len(context_em) + 3:] if context_em else text_full
 
-            definitions.append({"text": text, "group": current_group, "context": context})
+            search_words = tag_parser.find_all_text(li, "a")
+            hrefs = [attrs.get("href", "") for attrs in tag_parser.find_all_attrs(li, "a")]
+            urls = [f"https://www.sanakirja.org/{href}" if href else None for href in hrefs]
+
+            words = [{"word": word, "word_url": url} for word, url in zip(search_words, urls)]
+
+            definitions.append({"text": text, "group": current_group, "context": context, "words": words})
 
         return definitions
     
@@ -425,17 +519,23 @@ class Sanakirja:
         return result
     
     @staticmethod
-    def _get_categories(html: str) -> List[str]:
+    def _get_categories(html: str) -> StrDictList:
         """
         Extract the categories from the HTML of the webpage.
 
         :param html: The HTML of the webpage.
         :type html: str
-        :return: The categories as a list of strings.
-        :rtype: list[str]
+        :return: The categories as :type:`StrDictList` type.
+        :rtype: StrDictList
         """
         categories_div = tag_parser.find(html, "div", {"class": "categories"})
-        categories = tag_parser.find_all_text(categories_div, "a")
+        categories = []
+
+        for li in tag_parser.find_all(categories_div, "li"):
+            text = tag_parser.find_text(li, "a")
+            url = f"https://www.sanakirja.org{href}" if (href := tag_parser.find_attrs(li, "a").get("href", "")) else None
+
+            categories.append({"text": text, "category_url": url})
 
         return categories
     
@@ -473,8 +573,9 @@ class Sanakirja:
         inflections = self._get_inflections(html)
         translations = self._get_translations(html, l2)
         transliteration = self._get_transliteration(html)
+        gender = self._get_gender(html)
         relations = self._get_relations(html)
-        similar_words = self._get_similar_words(html)
+        did_you_mean, suggestions, found_examples = self._get_dym_suggestions_and_found_examples(html)
         definitions = self._get_definitions(html)
         examples = self._get_examples(html, int(l), l2 if not (keys := list(translations.keys())) else LangCodes[keys[0]])
         categories = self._get_categories(html)
@@ -485,9 +586,12 @@ class Sanakirja:
             "target_language": (l2 if isinstance(l2, str) else LangCodes(l2).name) if l2 else None,
             "word": str(sk_var.get("main_word_text") or q),
             "transliteration": transliteration,
+            "gender": gender,
             "additional_source_languages": additional_source_languages,
             "relations": relations,
-            "similar_words": similar_words,
+            "did_you_mean": did_you_mean,
+            "suggestions": suggestions,
+            "found_examples": found_examples,
             "alternative_spellings": alternative_spellings,
             "multiple_spellings": multiple_spellings,
             "synonyms": synonyms,
