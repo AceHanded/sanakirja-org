@@ -2,10 +2,19 @@
 
 ---
 
+<details id="v1.1.1">
+    <summary>v1.1.1</summary>
+    
+    - Added a `url` field to the result dictionary, which displays the search URL of the query.
+
+    - Fixed language code validation logic.
+    
+    - Replaced empty strings with `None` for missing values in the `pronunciations` field.
+</details>
 <details id="v1.1.0">
     <summary>v1.1.0</summary>
     
-    - Added the `gender` field to the result dictionary, which displays the linguistic gender as a `str` type, or None, if not applicable.
+    - Added the `gender` field to the result dictionary, which displays the linguistic gender as a `str` type, or `None`, if not applicable.
     - Added the URL to all applicable entries in the form of a `word_url` key, or `category_url` in the case of the `categories` field.
         - In the case of the `definitions` field, the applicable words and their URLs were added under a new `words` key, which is a list of `dict` types.
 

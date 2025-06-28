@@ -63,6 +63,7 @@ body:
               - "1.0.0"
               - "1.0.0.post1"
               - "1.1.0"
+              - "1.1.1"
           default: 0
       validations:
           required: true

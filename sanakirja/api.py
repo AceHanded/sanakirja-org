@@ -19,6 +19,7 @@ DefinitionResult = List[Optional[Union[str, List[str], Dict[str, str]]]]
 class SanakirjaResult(TypedDict):
     """Result dictionary with type annotated individual fields."""
     id: int
+    url: str
     source_language: Optional[str]
     target_language: Optional[str]
     word: str
@@ -100,7 +101,8 @@ class Sanakirja:
         if lang == 0: return 0
         elif isinstance(lang, str): return LangCodes[lang.lower()] if hasattr(LangCodes, lang.lower()) else False
         elif isinstance(lang, int): return lang if lang in LangCodes._value2member_map_ else False
-        return lang
+        elif isinstance(lang, LangCodes): return lang
+        return False
     
     @staticmethod
     def _get_sk_var(html: str) -> Dict[str, Union[int, str, bool]]:
@@ -178,15 +180,15 @@ class Sanakirja:
             abbr = tag_parser.find_text(pronunciation, "abbr").lower()
             if not abbr or abbr == "tuntematon aksentti": abbr = "unknown"
 
-            url = tag_parser.find_attrs(pronunciation, "a", {"class": "audio"}).get("href", "").lstrip("//")
+            url = tag_parser.find_attrs(pronunciation, "a", {"class": "audio"}).get("href", "").lstrip("//") or None
             pronunciation_ul = tag_parser.find(pronunciation, "ul")
 
             if pronunciation_ul:
                 for li in tag_parser.find_all(pronunciation_ul, "li"):
-                    text = tag_parser.find_text(li, "span")
+                    text = tag_parser.find_text(li, "span") or None
                     pronunciations.setdefault(abbr, []).append({"text": text, "audio_url": url})
             else:
-                pronunciations.setdefault(abbr, []).append({"text": "", "audio_url": url})
+                pronunciations.setdefault(abbr, []).append({"text": None, "audio_url": url})
 
         return alternative_spellings, synonyms, pronunciations
     
@@ -343,7 +345,7 @@ class Sanakirja:
             pronunciations = {}
 
             for abbr, li in zip(abbrs, pronunciation_li):
-                audio_url = tag_parser.find_attrs(li, "a", {"class": "audio"}).get("href", "").lstrip("//")
+                audio_url = tag_parser.find_attrs(li, "a", {"class": "audio"}).get("href", "").lstrip("//") or None
                 pronunciations.setdefault(abbr, []).append(audio_url)
 
             translations.append({
@@ -560,7 +562,7 @@ class Sanakirja:
         l2 = valid_l2
 
         # Make a request to the percent-encoded URL
-        with urllib.request.urlopen(self.__base_url.format(quote(q), l, l2)) as response:
+        with urllib.request.urlopen(url := self.__base_url.format(quote(q), l, l2)) as response:
             html = response.read().decode("utf-8")
 
         sk_var = self._get_sk_var(html)
@@ -582,6 +584,7 @@ class Sanakirja:
 
         result: SanakirjaResult = {
             "id": int(sk_var.get("main_word_id") or 0),
+            "url": url,
             "source_language": (l if isinstance(l, str) else LangCodes(l).name) if l else None,
             "target_language": (l2 if isinstance(l2, str) else LangCodes(l2).name) if l2 else None,
             "word": str(sk_var.get("main_word_text") or q),

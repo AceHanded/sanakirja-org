@@ -7,7 +7,7 @@ from typing import Set, Union
 
 # All possible fields returned by the `search` method of the `Sanakirja` object
 AVAILABLE_FIELDS = {
-    "id", "source_language", "target_language", "word", "transliteration", "gender", "additional_source_languages",
+    "id", "url", "source_language", "target_language", "word", "transliteration", "gender", "additional_source_languages",
     "relations", "did_you_mean", "suggestions", "found_examples", "alternative_spellings", "multiple_spellings", 
     "synonyms", "pronunciations", "abbreviations", "inflections", "definitions", "examples", "categories", "translations"
 }
