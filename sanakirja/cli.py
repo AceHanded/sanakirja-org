@@ -53,15 +53,16 @@ def main() -> None:
     parser.add_argument("word", help="The word to search")
     parser.add_argument("--from", metavar="SRC", dest="source", type=_parse_lang, default=0, help="Source language (ISO code or integer e.g., 'fi' or 17) (default: 0)")
     parser.add_argument("--to", metavar="TGT", dest="target", type=_parse_lang, default=0, help="Target language (ISO code or integer, e.g., 'en' or 3) (default: 0)")
+    parser.add_argument("-l", "--lang", "--language", metavar="LANG", type=_parse_lang, default="fi", help="The language of user interface elements (default: 'fi')")
     parser.add_argument("-s", "--show", metavar="FLDS", default="all", help="Fields to display, e.g., 'word,translations' or 'all,-similar_words' (default: 'all')")
-    parser.add_argument("-o", "--output", metavar="PATH", help="Save the result to a file at the specified path")
     parser.add_argument("-p", "--pretty", metavar="INDT", nargs="?", type=int, const=4, help="Pretty-print the output with an optional indent level (default: 4)")
+    parser.add_argument("-o", "--output", metavar="PATH", help="Save the result to a file at the specified path")
     parser.add_argument("-V", "--version", action="version", version=sanakirja.__version__)
 
     args = parser.parse_args()
     sk = sanakirja.Sanakirja()
 
-    result = sk.search(args.word, args.source, args.target)
+    result = sk.search(q=args.word, l=args.source, l2=args.target, ui_lang=args.lang)
     omitted = _resolve_show_fields(args.show)
     output = {k: v for k, v in result.items() if k not in omitted}
     if not args.output: return print(json.dumps(output, indent=args.pretty, ensure_ascii=False))

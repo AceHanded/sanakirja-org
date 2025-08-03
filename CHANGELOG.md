@@ -2,6 +2,13 @@
 
 ---
 
+<details id="v1.1.2">
+    <summary>v1.1.2</summary>
+    
+    - Added a language argument to both the search method of the API (ui_lang), as well as the CLI tool (-l, --lang, --language).
+        - Changes the language of user interface elements in the result dictionary.
+        - Supports the following language codes: en, fi, fr, sv.
+</details>
 <details id="v1.1.1">
     <summary>v1.1.1</summary>
     

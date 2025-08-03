@@ -99,9 +99,26 @@ class Sanakirja:
         :rtype: int | bool
         """
         if lang == 0: return 0
-        elif isinstance(lang, str): return LangCodes[lang.lower()] if hasattr(LangCodes, lang.lower()) else False
-        elif isinstance(lang, int): return lang if lang in LangCodes._value2member_map_ else False
+        elif isinstance(lang, str) and hasattr(LangCodes, lang.lower()): return LangCodes[lang.lower()]
+        elif isinstance(lang, int) and lang in LangCodes._value2member_map_: return lang
         elif isinstance(lang, LangCodes): return lang
+        return False
+    
+    @staticmethod
+    def _validate_result_lang_code(lang: Union[int, str, LangCodes]) -> Union[str, bool]:
+        """
+        Validate the given result language code.
+
+        :param lang: The result language code to validate.
+        :type lang: int | str | LangCodes
+        :return: The validated result language code in `str` format, or `False` if invalid.
+        :rtype: str | bool
+        """
+        valid_langs = ["en", "fi", "fr", "sv"]
+
+        if isinstance(lang, str) and lang.lower() in valid_langs: return lang.lower()
+        elif isinstance(lang, int) and lang in LangCodes._value2member_map_ and (lang_name := LangCodes(lang).name) in valid_langs: return lang_name
+        elif isinstance(lang, LangCodes) and lang.name in valid_langs: return lang.name
         return False
     
     @staticmethod
@@ -541,7 +558,7 @@ class Sanakirja:
 
         return categories
     
-    def search(self, q: str, l: Union[int, str, LangCodes] = 0, l2: Union[int, str, LangCodes] = 0) -> SanakirjaResult:
+    def search(self, q: str, l: Union[int, str, LangCodes] = 0, l2: Union[int, str, LangCodes] = 0, ui_lang: Union[int, str, LangCodes] = "fi") -> SanakirjaResult:
         """
         Search sanakirja.org for information on a given query.
 
@@ -551,6 +568,8 @@ class Sanakirja:
         :type l: int | str | LangCodes
         :param l2: The target language.
         :type l2: int | str | LangCodes
+        :param ui_lang: The language of user interface elements.
+        :type ui_lang: int | str | LangCodes
         :return: The information dictionary as a :type:`SanakirjaResult` type.
         :rtype: SanakirjaResult
         :raises LanguageCodeError: If either of the given language codes is invalid.
@@ -561,8 +580,13 @@ class Sanakirja:
         if (valid_l2 := self._validate_lang_code(l2)) is False: raise LanguageCodeError(str(l2))
         l2 = valid_l2
 
-        # Make a request to the percent-encoded URL
-        with urllib.request.urlopen(url := self.__base_url.format(quote(q), l, l2)) as response:
+        # An invalid result language code gets automatically resolved to "fi", but we will set it explicitly
+        if (valid_res_lang := self._validate_result_lang_code(ui_lang)): ui_lang = valid_res_lang or "fi"
+
+        # Create and make a request to the percent-encoded URL
+        req = urllib.request.Request(url := self.__base_url.format(quote(q), l, l2), headers={"Cookie": f"ui_lang={ui_lang}"})
+
+        with urllib.request.urlopen(req) as response:
             html = response.read().decode("utf-8")
 
         sk_var = self._get_sk_var(html)
